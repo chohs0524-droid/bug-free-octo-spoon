@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 성취기준 봇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .chat-scroll::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="h-screen flex items-center justify-center p-4">
+
+    <!-- Main Container -->
+    <div
+        class="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[80vh] border border-white/50 relative backdrop-blur-sm">
+
+        <!-- Header -->
+        <div class="bg-indigo-600 p-6 flex items-center justify-between text-white shrink-0 relative overflow-hidden">
+            <div
+                class="absolute top-0 right-0 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob">
+            </div>
+            <div
+                class="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000">
+            </div>
+
+            <div class="z-10 flex items-center gap-4">
+                <div
+                    class="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-2xl border-2 border-white/30">
+                    🤖
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">AI 성취기준 도우미</h1>
+                    <p class="text-indigo-100 text-xs">학교급별, 과목별 성취기준을 찾아드립니다.</p>
+                </div>
+            </div>
+            <button onclick="resetChat()"
+                class="z-10 p-2 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white"
+                title="처음으로">
+                <i class="fas fa-redo-alt"></i>
+            </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chat-history" class="flex-1 overflow-y-auto p-6 space-y-6 chat-scroll bg-slate-50 relative">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <!-- Input Area (Optional, mostly for manual queries) -->
+        <div class="p-4 bg-white border-t border-slate-100 shrink-0">
+            <form id="chat-form" class="relative">
+                <input type="text" id="chat-input"
+                    class="w-full pl-5 pr-12 py-4 bg-slate-100 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-700 placeholder-slate-400"
+                    placeholder="직접 질문하려면 여기 입력을..." autocomplete="off">
+                <button type="submit"
+                    class="absolute right-2 top-2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md w-10 h-10 flex items-center justify-center">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const data = {
+            subjects: [
+                { id: 'ex:Korean', label: '국어', grade: '4-6학년', color: 'bg-blue-500' },
+                { id: 'ex:Math', label: '수학', grade: '4학년', color: 'bg-green-500' },
+                { id: 'ex:Science4', label: '과학', grade: '4학년', color: 'bg-yellow-500' },
+                { id: 'ex:SocialStudies6', label: '사회', grade: '6학년', color: 'bg-red-500' }
+            ],
+            standards: [
+                // 국어 (Assuming shared across grades for this dataset simplicity or specific grade logic can be added)
+                // In the data provided, grades aren't explicitly split for Korean, but let's assume valid for 4-6.
+                { id: 'ex:Standard_12hwa01_01', code: '[12화언01-01]', text: '언어를 인간의 삶과 관련지어 이해하고, 국어와 국어생활이 시간의 흐름에 따라 변화하는 양상을 분석한다', subject: 'ex:Korean' },
+                { id: 'ex:Standard_12hwa01_02', code: '[12화언01-02]', text: '표준 발음을 이해하고 정확하게 발음하는 국어생활을 한다', subject: 'ex:Korean' },
+                { id: 'ex:Standard_12hwa01_03', code: '[12화언01-03]', text: '품사와 문장 구조에 대한 지식을 활용하여 언어 자료를 분석하고 설명한다', subject: 'ex:Korean' },
+                // ... (truncated for brevity, logic handles full search) 
+
+                // 수학 
+                { id: 'ex:Standard_4su02_01', code: '[4수02-01]', text: '다양한 변화 규칙을 찾아 설명하고, 그 규칙을 수나 식으로 나타낼 수 있다', subject: 'ex:Math' },
+                { id: 'ex:Standard_4su02_02', code: '[4수02-02]', text: '계산식의 배열에서 규칙을 찾고, 계산 결과를 추측할 수 있다', subject: 'ex:Math' },
+                { id: 'ex:Standard_4su01_05', code: '[4수01-05]', text: '나눗셈이 이루어지는 실생활 상황과 연결하여 나눗셈의 의미를 알고, 곱셈과 나눗셈의 관계를 이해한다', subject: 'ex:Math' },
+
+                // 과학
+                { id: 'ex:Standard_4gwa01_01', code: '[4과01-01]', text: '일상생활에서 힘과 관련된 현상에 흥미를 갖고, 물체를 밀거나 당길 때 나타나는 현상을 관찰할 수 있다', subject: 'ex:Science4' },
+                { id: 'ex:Standard_4gwa01_02', code: '[4과01-02]', text: '수평잡기 활동을 통해 물체의 무게를 비교할 수 있다', subject: 'ex:Science4' },
+
+                // 사회
+                { id: 'ex:Standard_6sa04_01', code: '[6사04-01]', text: '선사 시대와 고조선의 유적과 유물을 활용하여 당시 사람들의 생활을 추론한다', subject: 'ex:SocialStudies6' },
+                { id: 'ex:Standard_6sa04_02', code: '[6사04-02]', text: '역사 기록이나 유적과 유물에 나타난 고대 사람들의 생각과 생활을 추론한다', subject: 'ex:SocialStudies6' },
+            ]
+        };
+
+        // Complete standard list from previous file content for full search capability
+        const fullStandards = [
+            { id: 'ex:Standard_12hwa01_01', code: '[12화언01-01]', text: '언어를 인간의 삶과 관련지어 이해하고, 국어와 국어생활이 시간의 흐름에 따라 변화하는 양상을 분석한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_02', code: '[12화언01-02]', text: '표준 발음을 이해하고 정확하게 발음하는 국어생활을 한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_03', code: '[12화언01-03]', text: '품사와 문장 구조에 대한 지식을 활용하여 언어 자료를 분석하고 설명한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_04', code: '[12화언01-04]', text: '단어의 짜임과 의미, 단어 간의 의미 관계를 중심으로 어휘를 이해하고 담화에 적절히 활용한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_05', code: '[12화언01-05]', text: '담화의 맥락에 적절한 어휘와 문법 요소를 선택하여 화자의 태도를 드러낸다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_06', code: '[12화언01-06]', text: '담화의 구조를 고려하여 적절한 어휘와 문장으로 응집성 있는 담화를 구성한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_07', code: '[12화언01-07]', text: '다양한 유형의 담화와 매체를 대상으로 언어의 공공성을 이해하고 평가한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_08', code: '[12화언01-08]', text: '자아 개념이 의사소통 방식에 미치는 영향을 인식하고 협력적인 관계 형성에 적절한 방식으로 대화한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_09', code: '[12화언01-09]', text: '정제된 언어적 표현 전략 및 적절한 준언어적⋅비언어적 표현 전략을 활용하여 발표한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_12hwa01_10', code: '[12화언01-10]', text: '화자의 공신력을 이해하고 효과적인 설득 전략을 활용하여 연설한다', subject: 'ex:Korean' },
+            { id: 'ex:Standard_4su02_01', code: '[4수02-01]', text: '다양한 변화 규칙을 찾아 설명하고, 그 규칙을 수나 식으로 나타낼 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su02_02', code: '[4수02-02]', text: '계산식의 배열에서 규칙을 찾고, 계산 결과를 추측할 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_05', code: '[4수01-05]', text: '나눗셈이 이루어지는 실생활 상황과 연결하여 나눗셈의 의미를 알고, 곱셈과 나눗셈의 관계를 이해한다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_06', code: '[4수01-06]', text: '나누는 수가 한 자리 수인 나눗셈의 계산 원리를 이해하고 그 계산을 할 수 있으며, 나눗셈에서 몫과 나머지의 의미를 안다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_07', code: '[4수01-07]', text: '나누는 수가 두 자리 수인 나눗셈의 계산 원리를 이해하고 그 계산을 할 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_01', code: '[4수01-01]', text: '큰 수의 필요성을 인식하면서 10000 이상의 큰 수에 대한 자릿값과 위치적 기수법을 이해하고, 수를 읽고 쓸 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_02', code: '[4수01-02]', text: '다섯 자리 이상의 수의 범위에서 수의 계열을 이해하고, 수의 크기를 비교하며 그 방법을 설명할 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_09', code: '[4수01-09]', text: '양의 등분할을 통하여 분수의 필요성을 인식하고, 분수를 이해하고 읽고 쓸 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_10', code: '[4수01-10]', text: '단위분수, 진분수, 가분수, 대분수를 알고, 그 관계를 이해한다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4su01_11', code: '[4수01-11]', text: '분모가 같은 분수끼리, 단위분수끼리 크기를 비교하고 그 방법을 설명할 수 있다', subject: 'ex:Math' },
+            { id: 'ex:Standard_4gwa01_01', code: '[4과01-01]', text: '일상생활에서 힘과 관련된 현상에 흥미를 갖고, 물체를 밀거나 당길 때 나타나는 현상을 관찰할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa01_02', code: '[4과01-02]', text: '수평잡기 활동을 통해 물체의 무게를 비교할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa01_03', code: '[4과01-03]', text: '무게를 정확히 비교하기 위해서는 저울이 필요함을 알고, 저울을 사용해 무게를 비교할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa01_04', code: '[4과01-04]', text: '지레, 빗면과 같은 도구를 이용하면 물체를 들어 올릴 때 드는 힘의 크기가 달라짐을 알고, 도구가 일상생활에서 어떻게 쓰이는지 조사하여 공유할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa02_01', code: '[4과02-01]', text: '여러 가지 동물을 관찰하여 특징에 따라 동물을 분류할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa02_02', code: '[4과02-02]', text: '다양한 환경에 서식하는 동물을 조사하여 동물의 생김새와 생활 방식이 환경과 관련되어 있음을 설명할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa02_03', code: '[4과02-03]', text: '동물의 특징을 이용하여 일상생활에서 활용할 수 있는 생활용품을 설계하여 협력적으로 소통할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa03_01', code: '[4과03-01]', text: '여러 가지 식물을 관찰하여 특징에 따라 식물을 분류할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa03_02', code: '[4과03-02]', text: '다양한 환경에 서식하는 식물을 조사하여 식물의 생김새와 생활 방식이 환경과 관련되어 있음을 설명할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_4gwa03_03', code: '[4과03-03]', text: '식물의 특징을 이용하여 일상생활에서 활용할 수 있는 생활용품을 설계하여 협력적으로 소통할 수 있다', subject: 'ex:Science4' },
+            { id: 'ex:Standard_6sa04_01', code: '[6사04-01]', text: '선사 시대와 고조선의 유적과 유물을 활용하여 당시 사람들의 생활을 추론한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa04_02', code: '[6사04-02]', text: '역사 기록이나 유적과 유물에 나타난 고대 사람들의 생각과 생활을 추론한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa04_03', code: '[6사04-03]', text: '다양한 역사 자료를 활용하여 고려 시대 사회 모습과 사람들의 생활을 추론한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa05_01', code: '[6사05-01]', text: '조선 시대 사람들의 생각과 생활에 유교 문화가 미친 영향을 파악한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa05_02', code: '[6사05-02]', text: '조선 후기 사회⋅문화적 변화와 개항기 근대 문물 수용 과정에서 달라진 사람들의 생활을 이해한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa06_01', code: '[6사06-01]', text: '일제의 식민 통치와 이에 대한 저항이 사회와 생활에 미친 영향을 이해한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa06_02', code: '[6사06-02]', text: '8⋅15 광복과 6⋅25 전쟁이 사회와 생활에 미친 영향을 파악한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa07_01', code: '[6사07-01]', text: '분단으로 나타난 문제점과 분단과 관련된 장소를 평화의 장소로 만들려는 노력 등을 알아보고, 평화 통일을 위해 우리가 할 수 있는 일을 탐색한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa07_02', code: '[6사07-02]', text: '민주화와 산업화로 인해 달라진 생활 문화를 사례를 들어 이해한다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa08_01', code: '[6사08-01]', text: '민주주의에서 선거의 의미와 역할을 파악하고, 시민의 주권 행사를 위해 선거에 참여하는 태도를 기른다', subject: 'ex:SocialStudies6' },
+            { id: 'ex:Standard_6sa08_02', code: '[6사08-02]', text: '민주 국가에서 국회, 행정부, 법원이 하는 일에 대해 이해하고, 각 국가기관의 권력을 분립하는 이유를 탐색한다', subject: 'ex:SocialStudies6' }
+        ];
+
+        // Chat Variables
+        const chatHistory = document.getElementById('chat-history');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+
+        let currentState = 'INIT'; // INIT, GRADE_SELECTED, SUBJ_SELECTED
+        let selectedGrade = null;
+        let selectedSubject = null;
+
+        // UI Helpers
+        function scrollToBottom() {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function createMessageElement(isUser, htmlContent) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex items-end gap-3 fade-in-up ${isUser ? 'flex-row-reverse' : ''} mb-4`;
+
+            // Avatar for Bot
+            if (!isUser) {
+                const avatar = document.createElement('div');
+                avatar.className = `w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-md`;
+                avatar.innerHTML = '🤖';
+                wrapper.appendChild(avatar);
+            }
+
+            // Bubble
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[80%] py-3 px-5 rounded-2xl shadow-sm text-[15px] leading-relaxed relative ${isUser
+                    ? 'bg-indigo-600 text-white rounded-br-none'
+                    : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
+                }`;
+            bubble.innerHTML = htmlContent;
+
+            wrapper.appendChild(bubble);
+            return wrapper;
+        }
+
+        function showTypingIndicator() {
+            const wrapper = document.createElement('div');
+            wrapper.id = 'typing-indicator';
+            wrapper.className = `flex items-end gap-3 fade-in-up mb-4`;
+
+            const avatar = document.createElement('div');
+            avatar.className = `w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-md opacity-50`;
+            avatar.innerHTML = '🤖';
+            wrapper.appendChild(avatar);
+
+            const bubble = document.createElement('div');
+            bubble.className = `bg-white py-4 px-5 rounded-2xl rounded-bl-none shadow-sm border border-slate-100 flex gap-1`;
+
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-2 h-2 bg-slate-400 rounded-full typing-dot`;
+                bubble.appendChild(dot);
+            }
+
+            wrapper.appendChild(bubble);
+            chatHistory.appendChild(wrapper);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function addMessage(htmlContent, isUser = false) {
+            if (!isUser) {
+                showTypingIndicator();
+                await new Promise(r => setTimeout(r, 600)); // Simul network delay
+                removeTypingIndicator();
+            }
+            const el = createMessageElement(isUser, htmlContent);
+            chatHistory.appendChild(el);
+            scrollToBottom();
+        }
+
+        // Logic
+        function startChat() {
+            currentState = 'INIT';
+            addMessage(`
+                안녕하세요! 선생님, <strong>AI 성취기준 도우미</strong>입니다. 👋<br>
+                어떤 학년의 성취기준을 찾고 계신가요?<br>
+                <div class="flex gap-2 mt-3 flex-wrap">
+                    <button onclick="selectGrade('4학년')" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 border border-indigo-200 transition-colors font-medium">4학년</button>
+                    <button onclick="selectGrade('6학년')" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 border border-indigo-200 transition-colors font-medium">6학년</button>
+                </div>
+            `);
+        }
+
+        window.selectGrade = function (grade) {
+            selectedGrade = grade;
+            addMessage(grade, true); // User msg
+
+            // Filter subjects by grade
+            // Note: Data provided has specific grades. 
+            // "Korean" is 4-6, so it appears in both.
+            // "Math" is 4, "Science" is 4. "Social" is 6.
+
+            const availableSubjects = data.subjects.filter(s => s.grade.includes(grade) || s.grade === '4-6학년');
+
+            let buttonsHtml = availableSubjects.map(s =>
+                `<button onclick="selectSubject('${s.id}', '${s.label}')" class="px-4 py-2 ${s.color.replace('bg-', 'bg-opacity-10 text-').replace('500', '700')} hover:bg-opacity-20 rounded-xl transition-colors font-medium border border-transparent hover:border-current">${s.label}</button>`
+            ).join('');
+
+            setTimeout(() => {
+                addMessage(`
+                    <strong>${grade}</strong>을 선택하셨군요.<br>
+                    어떤 과목의 성취기준을 보여드릴까요?
+                    <div class="flex gap-2 mt-3 flex-wrap">
+                        ${buttonsHtml}
+                    </div>
+                `);
+            }, 300);
+        }
+
+        window.selectSubject = function (subId, subLabel) {
+            selectedSubject = { id: subId, label: subLabel };
+            addMessage(subLabel, true);
+
+            const standards = fullStandards.filter(s => s.subject === subId);
+
+            setTimeout(() => {
+                let standardList = standards.map(s => `
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm hover:border-indigo-300 transition-colors">
+                        <span class="font-bold text-indigo-600 block mb-1">${s.code}</span>
+                        ${s.text}
+                    </div>
+                `).join('');
+
+                if (standards.length === 0) {
+                    standardList = `<div class="text-slate-500 italic">등록된 성취기준이 없습니다.</div>`;
+                }
+
+                addMessage(`
+                    <strong>${selectedGrade} ${subLabel}</strong> 성취기준 ${standards.length}개를 찾았습니다.
+                    <div class="space-y-2 mt-3 max-h-[300px] overflow-y-auto pr-2 custom-scroll">
+                        ${standardList}
+                    </div>
+                    <div class="mt-4 text-xs text-slate-400">
+                        다른 과목을 보시려면 위 버튼을 다시 누르거나, "처음으로"를 눌러주세요.
+                    </div>
+                `);
+            }, 300);
+        }
+
+        window.resetChat = function () {
+            chatHistory.innerHTML = '';
+            startChat();
+        }
+
+        // Manual Input Handler
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+
+            addMessage(msg, true);
+            chatInput.value = '';
+
+            // Simple search logic for manual input
+            setTimeout(() => {
+                // Check if it matches a grade
+                if (msg.includes('4학년')) { selectGrade('4학년'); return; }
+                if (msg.includes('6학년')) { selectGrade('6학년'); return; }
+
+                // Check standard codes or keywords
+                const results = fullStandards.filter(s =>
+                    s.text.includes(msg) ||
+                    s.code.includes(msg) ||
+                    (s.code.replace(/[\[\]]/g, '') === msg)
+                );
+
+                if (results.length > 0) {
+                    let listHtml = results.slice(0, 5).map(s => `
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
+                            <span class="font-bold text-indigo-600">${s.code}</span> ${s.text}
+                        </div>
+                    `).join('');
+
+                    if (results.length > 5) {
+                        listHtml += `<div class="text-center text-xs text-slate-500 py-1">...외 ${results.length - 5}건</div>`;
+                    }
+
+                    addMessage(`
+                        "${msg}" 검색 결과 ${results.length}건을 찾았습니다.
+                        <div class="space-y-2 mt-3">
+                            ${listHtml}
+                        </div>
+                    `);
+                } else {
+                    addMessage(`
+                        죄송합니다. "${msg}"에 대한 결과를 찾지 못했습니다.<br>
+                        "국어", "수학" 같은 과목명이나 "4학년" 등을 선택해보세요.
+                    `);
+                }
+            }, 500);
+        });
+
+        // Initialize
+        startChat();
+
+    </script>
+</body>
+
+</html>
